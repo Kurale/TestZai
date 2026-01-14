@@ -729,7 +729,7 @@ async sendResultsToTelegram() {
 
   const statusEl = document.getElementById('send-status');
   const sendBtn = document.getElementById('send-btn');
-  
+
   statusEl.style.display = 'block';
   statusEl.style.backgroundColor = '#EBF8FF';
   statusEl.style.color = '#2B6CB0';
@@ -739,23 +739,29 @@ async sendResultsToTelegram() {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000);
-    
-    // Используем no-cors для обхода CORS ограничений
-    const response = await fetch("https://testanswerguru.nikolayka2011.workers.dev/", {
-      method: "POST",
-      mode: 'no-cors',
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-      signal: controller.signal
-    });
-    
+
+    const response = await fetch(
+      "https://testanswerguru.nikolayka2011.workers.dev/",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      }
+    );
+
     clearTimeout(timeoutId);
 
-    // В режиме no-cors мы не можем проверить ответ сервера
-    // Считаем отправку успешной, если не было ошибки сети
+    if (!response.ok) {
+      throw new Error("Ошибка отправки");
+    }
+
     statusEl.style.backgroundColor = '#E6FFFA';
     statusEl.style.color = '#047857';
     statusEl.textContent = '📤 Результаты отправлены репетитору';
+
   } catch (error) {
     console.error('Ошибка отправки:', error);
     statusEl.style.backgroundColor = '#FFF5F5';
@@ -764,6 +770,7 @@ async sendResultsToTelegram() {
     sendBtn.style.display = 'block';
   }
 }
+
 
 
         calculateResults() {
