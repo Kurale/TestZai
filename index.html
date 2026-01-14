@@ -78,11 +78,6 @@
             margin-top: 10px;
         }
         
-        .btn-send {
-            background-color: var(--success);
-        }
-        .btn-send:hover { background-color: #059669; }
-
         /* --- Стартовый экран (Загрузка) --- */
         .input-group {
             background: #F8FAFC;
@@ -261,9 +256,6 @@
         <h3>Разбор ошибок</h3>
         <ul id="error-list" class="error-list"></ul>
         <p id="no-errors-msg" style="display:none; color: var(--success);">Поздравляем! Ошибок нет 🎉</p>
-        
-        <div id="send-status" style="margin: 20px 0; padding: 15px; border-radius: 12px; text-align: center; font-weight: 600; display: none;"></div>
-        <button id="send-btn" class="btn btn-send" onclick="app.sendResultsToTelegram()" style="display: none;">📤 Отправить результаты</button>
         
         <button class="btn" onclick="location.reload()">На главную</button>
     </div>
@@ -705,120 +697,7 @@ finishQuiz() {
   clearInterval(this.timerInterval);
   this.switchScreen('result');
   this.calculateResults();
-  // Автоматически отправляем результаты после завершения теста
-  this.sendResultsToTelegram();
 }
-
-
-async sendResultsToTelegram() {
-  const total = this.userAnswers.length;
-  const correct = this.userAnswers.filter(a => a.isCorrect).length;
-  const percent = Math.round((correct / total) * 100);
-  const totalTime = Math.floor((Date.now() - this.totalStartTime) / 1000);
-  const mistakes = total - correct;
-
-  const payload = {
-    studentName: localStorage.getItem("studentName") || "Без имени",
-    testName: this.elements.filenameInput.value || "Тест",
-    correct,
-    total,
-    percent,
-    time: this.formatTime(totalTime),
-    mistakes,
-    date: new Date().toISOString()
-  };
-
-  const statusEl = document.getElementById('send-status');
-  const sendBtn = document.getElementById('send-btn');
-
-  statusEl.style.display = 'block';
-  statusEl.style.backgroundColor = '#EBF8FF';
-  statusEl.style.color = '#2B6CB0';
-  statusEl.textContent = '⏳ Отправка результатов...';
-  sendBtn.style.display = 'none';
-  sendBtn.disabled = false;
-
-  try {
-    const controller = new AbortController();
-    // Таймаут 20 секунд (Worker имеет таймаут 10 сек для Telegram + запас)
-    const timeoutId = setTimeout(() => {
-      controller.abort();
-    }, 20000);
-
-    let response;
-    try {
-      response = await fetch(
-        "https://testanswerguru.nikolayka2011.workers.dev/",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify(payload),
-          signal: controller.signal
-        }
-      );
-    } catch (fetchError) {
-      clearTimeout(timeoutId);
-      // Обработка сетевых ошибок и AbortError
-      if (fetchError.name === 'AbortError') {
-        throw new Error('Превышено время ожидания ответа от сервера (20 сек). Проверьте подключение к интернету или попробуйте позже.');
-      } else if (fetchError.message.includes('Failed to fetch') || fetchError.message.includes('network')) {
-        throw new Error('Не удалось подключиться к серверу. Проверьте подключение к интернету или убедитесь, что Worker развернут и доступен.');
-      } else {
-        throw fetchError;
-      }
-    }
-
-    clearTimeout(timeoutId);
-
-    // Парсим ответ от сервера
-    let responseData = null;
-    try {
-      const responseText = await response.text();
-      if (responseText) {
-        responseData = JSON.parse(responseText);
-      }
-    } catch (e) {
-      // Если ответ не JSON, продолжаем с проверкой статуса
-      console.warn('Ответ сервера не в формате JSON:', e);
-    }
-
-    if (!response.ok) {
-      const errorMsg = responseData?.error || responseData?.details || `Ошибка сервера: ${response.status} ${response.statusText}`;
-      throw new Error(errorMsg);
-    }
-
-    // Проверяем, что сервер вернул успешный ответ
-    if (responseData && responseData.ok === false) {
-      throw new Error(responseData.error || responseData.details || "Ошибка отправки на сервере");
-    }
-
-    statusEl.style.backgroundColor = '#E6FFFA';
-    statusEl.style.color = '#047857';
-    statusEl.textContent = '📤 Результаты отправлены репетитору';
-    sendBtn.style.display = 'none';
-
-  } catch (error) {
-    console.error('Ошибка отправки:', error);
-    statusEl.style.backgroundColor = '#FFF5F5';
-    statusEl.style.color = '#C53030';
-    
-    // Более информативное сообщение об ошибке
-    let errorMessage = '❌ Не удалось отправить результаты';
-    
-    if (error.name === 'AbortError') {
-      errorMessage = '❌ Превышено время ожидания. Проверьте подключение к интернету.';
-    } else if (error.message) {
-      errorMessage = `❌ ${error.message}`;
-    }
-    
-    statusEl.textContent = errorMessage;
-    sendBtn.style.display = 'block';
-  }
-}
-
-
 
         calculateResults() {
             const total = this.userAnswers.length;
