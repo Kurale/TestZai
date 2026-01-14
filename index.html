@@ -696,7 +696,7 @@ sendResultsToTelegram() {
     date: new Date().toISOString()
   };
 
-  fetch("https://YOUR-WORKER-NAME.workers.dev", {
+  fetch("testanswerguru.nikolayka2011.workers.dev", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload)
