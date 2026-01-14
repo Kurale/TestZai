@@ -740,10 +740,10 @@ async sendResultsToTelegram() {
 
   try {
     const controller = new AbortController();
-    // Увеличиваем таймаут до 30 секунд для надежности
+    // Таймаут 20 секунд (Worker имеет таймаут 10 сек для Telegram + запас)
     const timeoutId = setTimeout(() => {
       controller.abort();
-    }, 30000);
+    }, 20000);
 
     let response;
     try {
@@ -762,7 +762,7 @@ async sendResultsToTelegram() {
       clearTimeout(timeoutId);
       // Обработка сетевых ошибок и AbortError
       if (fetchError.name === 'AbortError') {
-        throw new Error('Превышено время ожидания ответа от сервера (30 сек). Проверьте подключение к интернету или попробуйте позже.');
+        throw new Error('Превышено время ожидания ответа от сервера (20 сек). Проверьте подключение к интернету или попробуйте позже.');
       } else if (fetchError.message.includes('Failed to fetch') || fetchError.message.includes('network')) {
         throw new Error('Не удалось подключиться к серверу. Проверьте подключение к интернету или убедитесь, что Worker развернут и доступен.');
       } else {

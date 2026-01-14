@@ -122,31 +122,101 @@ curl -X POST https://testanswerguru.YOUR_SUBDOMAIN.workers.dev/ \
   -v
 ```
 
+## Тестирование Worker
+
+### Быстрый тест через браузер
+
+Откройте файл `test-worker.html` в браузере и используйте его для проверки работы Worker:
+
+1. Введите URL вашего Worker
+2. Нажмите "1. Тест OPTIONS (Preflight)" - проверяет CORS заголовки
+3. Нажмите "2. Тест POST" - проверяет отправку данных
+4. Или нажмите "3. Полный тест" - запускает оба теста
+
+### Проверка через консоль браузера
+
+Откройте консоль браузера (F12) и выполните:
+
+```javascript
+// Тест OPTIONS
+fetch('https://testanswerguru.nikolayka2011.workers.dev/', {
+  method: 'OPTIONS',
+  headers: {
+    'Origin': 'https://kurale.github.io',
+    'Access-Control-Request-Method': 'POST',
+    'Access-Control-Request-Headers': 'Content-Type'
+  }
+}).then(r => {
+  console.log('Статус:', r.status);
+  console.log('CORS заголовки:', {
+    origin: r.headers.get('Access-Control-Allow-Origin'),
+    methods: r.headers.get('Access-Control-Allow-Methods'),
+    headers: r.headers.get('Access-Control-Allow-Headers')
+  });
+});
+```
+
 ## Устранение проблем
 
 Если возникают ошибки CORS или "Failed to fetch":
 
-1. **Убедитесь, что Worker развернут с последними изменениями:**
-   - Откройте Worker в Dashboard
-   - Проверьте, что код соответствует `worker.js`
-   - Нажмите **Save and deploy**
+### 1. Проверьте, что Worker обновлен
 
-2. **Проверьте, что секреты установлены:**
-   - В настройках Worker → Variables
-   - Убедитесь, что `BOT_TOKEN` и `CHAT_ID` установлены как Secret
+**ВАЖНО:** После каждого изменения в `worker.js`:
+- Откройте Worker в Cloudflare Dashboard
+- Нажмите **Quick edit** или **Edit code**
+- **Полностью замените** весь код на код из `worker.js`
+- Нажмите **Save and deploy**
+- Подождите несколько секунд для применения изменений
 
-3. **Проверьте логи Worker:**
-   - В Dashboard откройте ваш Worker
-   - Перейдите во вкладку **Logs** или **Real-time Logs**
-   - Попробуйте отправить запрос и посмотрите логи
+### 2. Проверьте CORS заголовки
 
-4. **Убедитесь, что URL в index.html совпадает с URL вашего Worker**
+Используйте `test-worker.html` или выполните в консоли браузера:
 
-5. **Проверьте консоль браузера** для детальной информации об ошибках
+```javascript
+fetch('https://testanswerguru.nikolayka2011.workers.dev/', {
+  method: 'OPTIONS'
+}).then(r => {
+  console.log('CORS заголовки:', {
+    'Access-Control-Allow-Origin': r.headers.get('Access-Control-Allow-Origin'),
+    'Access-Control-Allow-Methods': r.headers.get('Access-Control-Allow-Methods'),
+    'Access-Control-Allow-Headers': r.headers.get('Access-Control-Allow-Headers')
+  });
+});
+```
 
-6. **Проверьте формат данных:**
-   - Убедитесь, что токен бота начинается с цифр и содержит двоеточие
-   - Убедитесь, что Chat ID - это число (может быть отрицательным для групп)
+Если заголовки отсутствуют - Worker не обновлен или код неверный.
+
+### 3. Проверьте секреты
+
+- В настройках Worker → **Variables** → **Environment Variables**
+- Убедитесь, что `BOT_TOKEN` и `CHAT_ID` установлены как **Secret (Encrypted)**
+- **НЕ** как обычные переменные!
+
+### 4. Проверьте логи Worker
+
+- В Dashboard откройте ваш Worker
+- Перейдите во вкладку **Logs** или **Real-time Logs**
+- Попробуйте отправить запрос и посмотрите логи
+- Если видите ошибки - они помогут понять проблему
+
+### 5. Проверьте URL
+
+- Убедитесь, что URL в `index.html` точно совпадает с URL вашего Worker
+- URL должен заканчиваться на `/`
+- Проверьте, что нет опечаток
+
+### 6. Проверьте формат данных
+
+- Токен бота должен начинаться с цифр и содержать двоеточие (например: `123456789:ABC...`)
+- Chat ID должен быть числом (может быть отрицательным для групп)
+
+### 7. Очистите кэш браузера
+
+Иногда браузер кэширует старые ответы. Попробуйте:
+- Очистить кэш браузера (Ctrl+Shift+Delete)
+- Открыть в режиме инкогнито
+- Использовать другой браузер
 
 ## Важные замечания
 

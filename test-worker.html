@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест Worker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 10px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <h1>Тестирование Cloudflare Worker</h1>
+    <p>Используйте эту страницу для проверки работы Worker и CORS.</p>
+    
+    <div>
+        <label>URL Worker:</label><br>
+        <input type="text" id="workerUrl" value="https://testanswerguru.nikolayka2011.workers.dev/" style="width: 100%; padding: 8px; margin: 10px 0;">
+    </div>
+    
+    <div>
+        <button onclick="testOptions()">1. Тест OPTIONS (Preflight)</button>
+        <button onclick="testPOST()">2. Тест POST</button>
+        <button onclick="testFull()">3. Полный тест</button>
+    </div>
+    
+    <div id="result"></div>
+
+    <script>
+        const workerUrl = document.getElementById('workerUrl');
+        const resultDiv = document.getElementById('result');
+
+        function showResult(message, type = 'info') {
+            resultDiv.className = type;
+            resultDiv.textContent = message;
+        }
+
+        async function testOptions() {
+            showResult('Отправка OPTIONS запроса...', 'info');
+            try {
+                const response = await fetch(workerUrl.value, {
+                    method: 'OPTIONS',
+                    headers: {
+                        'Origin': 'https://kurale.github.io',
+                        'Access-Control-Request-Method': 'POST',
+                        'Access-Control-Request-Headers': 'Content-Type'
+                    }
+                });
+                
+                const headers = {};
+                response.headers.forEach((value, key) => {
+                    headers[key] = value;
+                });
+
+                const result = `OPTIONS запрос:\nСтатус: ${response.status} ${response.statusText}\n\nЗаголовки ответа:\n${JSON.stringify(headers, null, 2)}\n\nCORS заголовки:\n- Access-Control-Allow-Origin: ${headers['access-control-allow-origin'] || 'ОТСУТСТВУЕТ!'}\n- Access-Control-Allow-Methods: ${headers['access-control-allow-methods'] || 'ОТСУТСТВУЕТ!'}\n- Access-Control-Allow-Headers: ${headers['access-control-allow-headers'] || 'ОТСУТСТВУЕТ!'}`;
+                
+                if (response.status === 204 && headers['access-control-allow-origin']) {
+                    showResult(result, 'success');
+                } else {
+                    showResult(result + '\n\n⚠️ ПРОБЛЕМА: CORS заголовки не установлены правильно!', 'error');
+                }
+            } catch (error) {
+                showResult(`Ошибка: ${error.message}`, 'error');
+            }
+        }
+
+        async function testPOST() {
+            showResult('Отправка POST запроса...', 'info');
+            try {
+                const payload = {
+                    studentName: "Тестовый ученик",
+                    testName: "Тестовый тест",
+                    correct: 8,
+                    total: 10,
+                    percent: 80,
+                    time: "05:30",
+                    mistakes: 2,
+                    date: new Date().toISOString()
+                };
+
+                const response = await fetch(workerUrl.value, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Origin': 'https://kurale.github.io'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const responseText = await response.text();
+                let responseData;
+                try {
+                    responseData = JSON.parse(responseText);
+                } catch (e) {
+                    responseData = responseText;
+                }
+
+                const headers = {};
+                response.headers.forEach((value, key) => {
+                    headers[key] = value;
+                });
+
+                const result = `POST запрос:\nСтатус: ${response.status} ${response.statusText}\n\nЗаголовки ответа:\n${JSON.stringify(headers, null, 2)}\n\nТело ответа:\n${JSON.stringify(responseData, null, 2)}`;
+                
+                if (response.ok && headers['access-control-allow-origin']) {
+                    showResult(result, 'success');
+                } else {
+                    showResult(result + '\n\n⚠️ ПРОБЛЕМА: Запрос не прошел успешно или CORS заголовки отсутствуют!', 'error');
+                }
+            } catch (error) {
+                showResult(`Ошибка: ${error.message}\n\nЭто может быть CORS ошибка. Проверьте консоль браузера (F12).`, 'error');
+            }
+        }
+
+        async function testFull() {
+            showResult('Запуск полного теста...\n\n', 'info');
+            await testOptions();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            await testPOST();
+        }
+    </script>
+</body>
+</html>

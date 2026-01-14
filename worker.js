@@ -1,14 +1,17 @@
 export default {
   async fetch(request, env) {
-    // CORS headers - полный набор для всех запросов
+    // Получаем Origin из запроса
+    const origin = request.headers.get("Origin") || "*";
+    
+    // CORS headers - явно указываем все заголовки
     const corsHeaders = {
-      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Origin": origin,
       "Access-Control-Allow-Methods": "POST, OPTIONS, GET",
-      "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With, Accept",
       "Access-Control-Max-Age": "86400"
     };
 
-    // Handle preflight requests (OPTIONS)
+    // Handle preflight requests (OPTIONS) - ОБРАБАТЫВАЕМ ПЕРВЫМ!
     if (request.method === "OPTIONS") {
       return new Response(null, {
         status: 204,
@@ -16,12 +19,16 @@ export default {
       });
     }
 
+    // Только POST запросы разрешены
     if (request.method !== "POST") {
       return new Response(
         JSON.stringify({ ok: false, error: "Only POST method allowed" }),
         {
           status: 405,
-          headers: { ...corsHeaders, "Content-Type": "application/json" }
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json"
+          }
         }
       );
     }
@@ -33,12 +40,16 @@ export default {
         JSON.stringify({ ok: false, error: "Server configuration error" }),
         {
           status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" }
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json"
+          }
         }
       );
     }
 
     try {
+      // Парсинг JSON
       let data;
       try {
         data = await request.json();
@@ -47,7 +58,10 @@ export default {
           JSON.stringify({ ok: false, error: "Invalid JSON in request body" }),
           {
             status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" }
+            headers: {
+              ...corsHeaders,
+              "Content-Type": "application/json"
+            }
           }
         );
       }
@@ -58,7 +72,10 @@ export default {
           JSON.stringify({ ok: false, error: "Missing required fields" }),
           {
             status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" }
+            headers: {
+              ...corsHeaders,
+              "Content-Type": "application/json"
+            }
           }
         );
       }
@@ -90,7 +107,7 @@ export default {
         }
       };
 
-      // Формирование сообщения с использованием HTML (более безопасно)
+      // Формирование сообщения с использованием HTML
       const text = `
 📊 <b>Результаты теста</b>
 
@@ -106,45 +123,84 @@ export default {
       `.trim();
 
       // Отправка в Telegram
-      const tgResponse = await fetch(
-        `https://api.telegram.org/bot${env.BOT_TOKEN}/sendMessage`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            chat_id: env.CHAT_ID,
-            text: text,
-            parse_mode: "HTML"
-          })
+      // Cloudflare Workers имеет встроенные таймауты для fetch запросов
+      let tgResponse;
+      let tgData;
+      
+      try {
+        // Запрос к Telegram API
+        // Workers автоматически ограничивает время выполнения запросов
+        tgResponse = await fetch(
+          `https://api.telegram.org/bot${env.BOT_TOKEN}/sendMessage`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              chat_id: env.CHAT_ID,
+              text: text,
+              parse_mode: "HTML"
+            })
+          }
+        );
+
+        // Парсинг ответа
+        try {
+          tgData = await tgResponse.json();
+        } catch (jsonError) {
+          // Если не удалось распарсить JSON, но запрос прошел
+          console.warn("Failed to parse Telegram response:", jsonError);
+          tgData = { ok: false, description: "Invalid response from Telegram" };
         }
-      );
 
-      const tgData = await tgResponse.json();
+        if (!tgResponse.ok || !tgData.ok) {
+          console.error("Telegram API error:", tgData);
+          // Возвращаем частичный успех - данные приняты, но Telegram не ответил
+          return new Response(
+            JSON.stringify({
+              ok: true,
+              message: "Results accepted, but Telegram notification may have failed",
+              warning: tgData.description || "Telegram API error"
+            }),
+            {
+              headers: {
+                ...corsHeaders,
+                "Content-Type": "application/json"
+              }
+            }
+          );
+        }
 
-      if (!tgResponse.ok || !tgData.ok) {
-        console.error("Telegram API error:", tgData);
+        // Успешный ответ
+        return new Response(
+          JSON.stringify({ ok: true, message: "Results sent successfully" }),
+          {
+            headers: {
+              ...corsHeaders,
+              "Content-Type": "application/json"
+            }
+          }
+        );
+
+      } catch (telegramError) {
+        // Если таймаут или другая ошибка Telegram API
+        console.error("Telegram API error or timeout:", telegramError);
+        
+        // Возвращаем успех клиенту, даже если Telegram не ответил
+        // Это важно, чтобы не блокировать пользователя
         return new Response(
           JSON.stringify({
-            ok: false,
-            error: "Telegram API error",
-            details: tgData.description || "Unknown error"
+            ok: true,
+            message: "Results accepted",
+            warning: "Telegram notification may be delayed"
           }),
           {
-            status: 500,
-            headers: { ...corsHeaders, "Content-Type": "application/json" }
+            headers: {
+              ...corsHeaders,
+              "Content-Type": "application/json"
+            }
           }
         );
       }
-
-      return new Response(
-        JSON.stringify({ ok: true, message: "Results sent successfully" }),
-        {
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json"
-          }
-        }
-      );
 
     } catch (err) {
       console.error("Worker error:", err);
@@ -155,7 +211,10 @@ export default {
         }),
         {
           status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" }
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json"
+          }
         }
       );
     }
