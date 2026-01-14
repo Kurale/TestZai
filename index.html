@@ -78,6 +78,11 @@
             margin-top: 10px;
         }
         
+        .btn-send {
+            background-color: var(--success);
+        }
+        .btn-send:hover { background-color: #059669; }
+        
         /* --- Стартовый экран (Загрузка) --- */
         .input-group {
             background: #F8FAFC;
@@ -257,7 +262,8 @@
         <ul id="error-list" class="error-list"></ul>
         <p id="no-errors-msg" style="display:none; color: var(--success);">Поздравляем! Ошибок нет 🎉</p>
         
-        <button class="btn" onclick="location.reload()">На главную</button>
+        <button class="btn btn-send" onclick="app.sendToTelegram()">Отправить результат</button>
+        <button class="btn btn-secondary" onclick="location.reload()">На главную</button>
     </div>
 </div>
 
@@ -273,6 +279,7 @@
             this.selectedMatchLeft = null;
             this.currentMatches = {};
             this.currentSelection = null; // Для single choice
+            this.resultData = null; // Для хранения результатов теста
             
             this.screens = {
                 start: document.getElementById('start-screen'),
@@ -704,6 +711,17 @@ finishQuiz() {
             const correct = this.userAnswers.filter(a => a.isCorrect).length;
             const percent = Math.round((correct / total) * 100);
             const totalTime = Math.floor((Date.now() - this.totalStartTime) / 1000);
+            const studentName = this.elements.studentNameInput.value.trim() || 'Аноним';
+
+            // Сохраняем результаты для отправки
+            this.resultData = {
+                name: studentName,
+                correct: correct,
+                total: total,
+                percent: percent,
+                time: this.formatTime(totalTime),
+                topic: "Задачи на движение"
+            };
 
             document.getElementById('res-score').textContent = `${percent}%`;
             document.getElementById('res-correct').textContent = `${correct} / ${total}`;
@@ -746,6 +764,46 @@ finishQuiz() {
                     maintainAspectRatio: false,
                     plugins: { legend: { position: 'bottom' } }
                 }
+            });
+        }
+
+        sendToTelegram() {
+            if (!this.resultData) {
+                alert('Нет данных для отправки');
+                return;
+            }
+
+            const btn = document.querySelector('#result-screen .btn');
+            const originalText = btn.textContent;
+            btn.textContent = "Отправка...";
+            btn.disabled = true;
+
+            fetch("https://script.google.com/macros/s/AKfycbzUuoH55lTk5z7_cQOuyUlZKlXC0dyERkh7RmzBzbQqVKg-Z5ttAkOLt1I1jRnDyTK9/exec", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    student: this.resultData.name,
+                    correct: this.resultData.correct,
+                    total: this.resultData.total,
+                    percent: this.resultData.percent,
+                    time: this.resultData.time,
+                    topic: this.resultData.topic
+                })
+            })
+            .then(response => {
+                if (response.ok) {
+                    alert('Результат успешно отправлен!');
+                } else {
+                    throw new Error('Ошибка отправки');
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка:', error);
+                alert('Не удалось отправить результат. Попробуйте позже.');
+            })
+            .finally(() => {
+                btn.textContent = originalText;
+                btn.disabled = false;
             });
         }
     }
