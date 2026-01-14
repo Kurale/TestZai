@@ -705,6 +705,7 @@ finishQuiz() {
   clearInterval(this.timerInterval);
   this.switchScreen('result');
   this.calculateResults();
+  // Автоматически отправляем результаты после завершения теста
   this.sendResultsToTelegram();
 }
 
@@ -735,6 +736,7 @@ async sendResultsToTelegram() {
   statusEl.style.color = '#2B6CB0';
   statusEl.textContent = '⏳ Отправка результатов...';
   sendBtn.style.display = 'none';
+  sendBtn.disabled = false;
 
   try {
     const controller = new AbortController();
@@ -754,19 +756,41 @@ async sendResultsToTelegram() {
 
     clearTimeout(timeoutId);
 
+    // Парсим ответ от сервера
+    let responseData = null;
+    try {
+      responseData = await response.json();
+    } catch (e) {
+      // Если ответ не JSON, продолжаем с проверкой статуса
+    }
+
     if (!response.ok) {
-      throw new Error("Ошибка отправки");
+      const errorMsg = responseData?.error || responseData?.details || `Ошибка ${response.status}`;
+      throw new Error(errorMsg);
+    }
+
+    // Проверяем, что сервер вернул успешный ответ
+    if (responseData && responseData.ok === false) {
+      throw new Error(responseData.error || "Ошибка отправки на сервере");
     }
 
     statusEl.style.backgroundColor = '#E6FFFA';
     statusEl.style.color = '#047857';
     statusEl.textContent = '📤 Результаты отправлены репетитору';
+    sendBtn.style.display = 'none';
 
   } catch (error) {
     console.error('Ошибка отправки:', error);
     statusEl.style.backgroundColor = '#FFF5F5';
     statusEl.style.color = '#C53030';
-    statusEl.textContent = '❌ Не удалось отправить результаты';
+    
+    // Более информативное сообщение об ошибке
+    if (error.name === 'AbortError') {
+      statusEl.textContent = '❌ Превышено время ожидания. Проверьте подключение к интернету.';
+    } else {
+      statusEl.textContent = `❌ Не удалось отправить результаты: ${error.message}`;
+    }
+    
     sendBtn.style.display = 'block';
   }
 }
