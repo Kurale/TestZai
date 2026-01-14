@@ -778,24 +778,25 @@ finishQuiz() {
             btn.textContent = "Отправка...";
             btn.disabled = true;
 
-            fetch("https://script.google.com/macros/s/AKfycbzUuoH55lTk5z7_cQOuyUlZKlXC0dyERkh7RmzBzbQqVKg-Z5ttAkOLt1I1jRnDyTK9/exec", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    student: this.resultData.name,
-                    correct: this.resultData.correct,
-                    total: this.resultData.total,
-                    percent: this.resultData.percent,
-                    time: this.resultData.time,
-                    topic: this.resultData.topic
-                })
+            // Формируем URL с параметрами для GET запроса (обход CORS)
+            const params = new URLSearchParams({
+                student: this.resultData.name,
+                correct: this.resultData.correct,
+                total: this.resultData.total,
+                percent: this.resultData.percent,
+                time: this.resultData.time,
+                topic: this.resultData.topic
+            });
+            
+            const url = `https://script.google.com/macros/s/AKfycbzUuoH55lTk5z7_cQOuyUlZKlXC0dyERkh7RmzBzbQqVKg-Z5ttAkOLt1I1jRnDyTK9/exec?${params.toString()}`;
+
+            fetch(url, {
+                method: "GET",
+                mode: "no-cors"
             })
-            .then(response => {
-                if (response.ok) {
-                    alert('Результат успешно отправлен!');
-                } else {
-                    throw new Error('Ошибка отправки');
-                }
+            .then(() => {
+                // При no-cors мы не можем проверить статус, но запрос отправляется
+                alert('Результат отправлен!');
             })
             .catch(error => {
                 console.error('Ошибка:', error);
