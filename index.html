@@ -740,38 +740,58 @@ async sendResultsToTelegram() {
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    // Увеличиваем таймаут до 30 секунд для надежности
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, 30000);
 
-    const response = await fetch(
-      "https://testanswerguru.nikolayka2011.workers.dev/",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(payload),
-        signal: controller.signal
+    let response;
+    try {
+      response = await fetch(
+        "https://testanswerguru.nikolayka2011.workers.dev/",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload),
+          signal: controller.signal
+        }
+      );
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      // Обработка сетевых ошибок и AbortError
+      if (fetchError.name === 'AbortError') {
+        throw new Error('Превышено время ожидания ответа от сервера (30 сек). Проверьте подключение к интернету или попробуйте позже.');
+      } else if (fetchError.message.includes('Failed to fetch') || fetchError.message.includes('network')) {
+        throw new Error('Не удалось подключиться к серверу. Проверьте подключение к интернету или убедитесь, что Worker развернут и доступен.');
+      } else {
+        throw fetchError;
       }
-    );
+    }
 
     clearTimeout(timeoutId);
 
     // Парсим ответ от сервера
     let responseData = null;
     try {
-      responseData = await response.json();
+      const responseText = await response.text();
+      if (responseText) {
+        responseData = JSON.parse(responseText);
+      }
     } catch (e) {
       // Если ответ не JSON, продолжаем с проверкой статуса
+      console.warn('Ответ сервера не в формате JSON:', e);
     }
 
     if (!response.ok) {
-      const errorMsg = responseData?.error || responseData?.details || `Ошибка ${response.status}`;
+      const errorMsg = responseData?.error || responseData?.details || `Ошибка сервера: ${response.status} ${response.statusText}`;
       throw new Error(errorMsg);
     }
 
     // Проверяем, что сервер вернул успешный ответ
     if (responseData && responseData.ok === false) {
-      throw new Error(responseData.error || "Ошибка отправки на сервере");
+      throw new Error(responseData.error || responseData.details || "Ошибка отправки на сервере");
     }
 
     statusEl.style.backgroundColor = '#E6FFFA';
@@ -785,12 +805,15 @@ async sendResultsToTelegram() {
     statusEl.style.color = '#C53030';
     
     // Более информативное сообщение об ошибке
+    let errorMessage = '❌ Не удалось отправить результаты';
+    
     if (error.name === 'AbortError') {
-      statusEl.textContent = '❌ Превышено время ожидания. Проверьте подключение к интернету.';
-    } else {
-      statusEl.textContent = `❌ Не удалось отправить результаты: ${error.message}`;
+      errorMessage = '❌ Превышено время ожидания. Проверьте подключение к интернету.';
+    } else if (error.message) {
+      errorMessage = `❌ ${error.message}`;
     }
     
+    statusEl.textContent = errorMessage;
     sendBtn.style.display = 'block';
   }
 }

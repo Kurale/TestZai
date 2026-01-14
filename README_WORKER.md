@@ -50,6 +50,8 @@ wrangler publish
 После успешного развертывания вы получите URL вида:
 `https://testanswerguru.YOUR_SUBDOMAIN.workers.dev`
 
+**Важно:** После каждого изменения в `worker.js` необходимо перезапустить Worker командой `wrangler publish`.
+
 ### 7. Обновите URL в index.html
 
 Замените URL в файле `index.html` на ваш новый URL Worker:
@@ -77,6 +79,8 @@ const response = await fetch(
 
 ## Тестирование
 
+### Локальное тестирование
+
 Вы можете протестировать Worker локально:
 
 ```bash
@@ -99,3 +103,55 @@ curl -X POST http://localhost:8787/ \
     "date": "2024-01-01T12:00:00.000Z"
   }'
 ```
+
+### Тестирование развернутого Worker
+
+После развертывания проверьте CORS и работу Worker:
+
+```bash
+# Проверка OPTIONS запроса (preflight)
+curl -X OPTIONS https://testanswerguru.nikolayka2011.workers.dev/ \
+  -H "Origin: https://kurale.github.io" \
+  -H "Access-Control-Request-Method: POST" \
+  -H "Access-Control-Request-Headers: Content-Type" \
+  -v
+
+# Проверка POST запроса
+curl -X POST https://testanswerguru.nikolayka2011.workers.dev/ \
+  -H "Content-Type: application/json" \
+  -H "Origin: https://kurale.github.io" \
+  -d '{
+    "studentName": "Тестовый ученик",
+    "testName": "Тестовый тест",
+    "correct": 8,
+    "total": 10,
+    "percent": 80,
+    "time": "05:30",
+    "mistakes": 2,
+    "date": "2024-01-01T12:00:00.000Z"
+  }' \
+  -v
+```
+
+### Устранение проблем
+
+Если возникают ошибки CORS или "Failed to fetch":
+
+1. **Убедитесь, что Worker развернут с последними изменениями:**
+   ```bash
+   wrangler publish
+   ```
+
+2. **Проверьте, что секреты установлены:**
+   ```bash
+   wrangler secret list
+   ```
+
+3. **Проверьте логи Worker:**
+   ```bash
+   wrangler tail
+   ```
+
+4. **Убедитесь, что URL в index.html совпадает с URL вашего Worker**
+
+5. **Проверьте консоль браузера** для детальной информации об ошибках

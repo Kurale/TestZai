@@ -1,15 +1,19 @@
 export default {
   async fetch(request, env) {
-    // CORS headers
+    // CORS headers - полный набор для всех запросов
     const corsHeaders = {
       "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type"
+      "Access-Control-Allow-Methods": "POST, OPTIONS, GET",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With",
+      "Access-Control-Max-Age": "86400"
     };
 
-    // Handle preflight requests
+    // Handle preflight requests (OPTIONS)
     if (request.method === "OPTIONS") {
-      return new Response(null, { headers: corsHeaders });
+      return new Response(null, {
+        status: 204,
+        headers: corsHeaders
+      });
     }
 
     if (request.method !== "POST") {
@@ -35,7 +39,18 @@ export default {
     }
 
     try {
-      const data = await request.json();
+      let data;
+      try {
+        data = await request.json();
+      } catch (parseError) {
+        return new Response(
+          JSON.stringify({ ok: false, error: "Invalid JSON in request body" }),
+          {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
+          }
+        );
+      }
 
       // Валидация данных
       if (!data.studentName || !data.testName) {
