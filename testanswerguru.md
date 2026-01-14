@@ -1,7 +1,22 @@
 export default {
   async fetch(request, env) {
+    // CORS headers
+    const corsHeaders = {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type"
+    };
+
+    // Handle preflight requests
+    if (request.method === "OPTIONS") {
+      return new Response(null, { headers: corsHeaders });
+    }
+
     if (request.method !== "POST") {
-      return new Response("Only POST allowed", { status: 405 });
+      return new Response("Only POST allowed", {
+        status: 405,
+        headers: corsHeaders
+      });
     }
 
     try {
@@ -40,19 +55,28 @@ export default {
         console.error("Telegram API error:", tgData);
         return new Response(
           JSON.stringify({ ok: false, error: "Telegram API error", details: tgData }),
-          { status: 500 }
+          {
+            status: 500,
+            headers: corsHeaders
+          }
         );
       }
 
       return new Response(JSON.stringify({ ok: true }), {
-        headers: { "Content-Type": "application/json" }
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json"
+        }
       });
 
     } catch (err) {
       console.error("Worker error:", err);
       return new Response(
         JSON.stringify({ ok: false, error: err.message }),
-        { status: 500 }
+        {
+          status: 500,
+          headers: corsHeaders
+        }
       );
     }
   }
