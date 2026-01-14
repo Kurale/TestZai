@@ -670,11 +670,39 @@
             });
         }
 
-        finishQuiz() {
-            clearInterval(this.timerInterval);
-            this.switchScreen('result');
-            this.calculateResults();
-        }
+finishQuiz() {
+  clearInterval(this.timerInterval);
+  this.sendResultsToTelegram();
+  this.switchScreen('result');
+  this.calculateResults();
+}
+
+
+sendResultsToTelegram() {
+  const total = this.userAnswers.length;
+  const correct = this.userAnswers.filter(a => a.isCorrect).length;
+  const percent = Math.round((correct / total) * 100);
+  const totalTime = Math.floor((Date.now() - this.totalStartTime) / 1000);
+  const mistakes = total - correct;
+
+  const payload = {
+    studentName: localStorage.getItem("studentName") || "Без имени",
+    testName: this.elements.filenameInput.value || "Тест",
+    correct,
+    total,
+    percent,
+    time: this.formatTime(totalTime),
+    mistakes,
+    date: new Date().toISOString()
+  };
+
+  fetch("https://YOUR-WORKER-NAME.workers.dev", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+}
+
 
         calculateResults() {
             const total = this.userAnswers.length;
