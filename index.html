@@ -280,6 +280,8 @@
             this.currentMatches = {};
             this.currentSelection = null; // Для single choice
             this.resultData = null; // Для хранения результатов теста
+            this.chartInstance = null; // Для хранения экземпляра графика
+            this.testTopic = ""; // Для хранения темы теста из имени файла
             
             this.screens = {
                 start: document.getElementById('start-screen'),
@@ -349,6 +351,10 @@
                 return;
             }
 
+            // --- ИЗМЕНЕНИЕ: Сохраняем имя файла как тему теста ---
+            this.testTopic = filename;
+            // ---------------------------------------------------
+
             // Формируем полный путь: Data/имя_файла.json
             const fullPath = `Data/${filename}.json`;
 
@@ -356,9 +362,7 @@
             this.elements.startError.textContent = '';
             
             try {
-                // Показываем загрузку (меняем текст кнопки временно)
                 const btn = document.querySelector('#start-screen .btn');
-                const originalText = btn.textContent;
                 btn.textContent = "Загрузка...";
                 btn.disabled = true;
 
@@ -713,15 +717,16 @@ finishQuiz() {
             const totalTime = Math.floor((Date.now() - this.totalStartTime) / 1000);
             const studentName = this.elements.studentNameInput.value.trim() || 'Аноним';
 
-            // Сохраняем результаты для отправки
+            // --- ИЗМЕНЕНИЕ: Используем динамическую тему из имени файла ---
             this.resultData = {
                 name: studentName,
                 correct: correct,
                 total: total,
                 percent: percent,
                 time: this.formatTime(totalTime),
-                topic: "Задачи на движение"
+                topic: this.testTopic || "Общий тест" // Если вдруг пусто, ставим заглушку
             };
+            // -------------------------------------------------------------
 
             document.getElementById('res-score').textContent = `${percent}%`;
             document.getElementById('res-correct').textContent = `${correct} / ${total}`;
@@ -749,7 +754,11 @@ finishQuiz() {
             }
 
             const ctx = document.getElementById('resultsChart').getContext('2d');
-            new Chart(ctx, {
+            // Удаляем старый график если он был, чтобы не накладывались (хорошая практика)
+            if (this.chartInstance) {
+                this.chartInstance.destroy();
+            }
+            this.chartInstance = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
                     labels: ['Правильно', 'Ошибки'],
@@ -767,51 +776,54 @@ finishQuiz() {
             });
         }
 
-        sendToTelegram() {
-            if (!this.resultData) {
-                alert('Нет данных для отправки');
-                return;
-            }
+sendToTelegram() {
+    if (!this.resultData) {
+        alert('Нет данных для отправки');
+        return;
+    }
 
-            console.log('📤 Начинаем отправку результатов:', this.resultData);
+    console.log('📤 Начинаем отправку результатов:', this.resultData);
 
-            const btn = document.querySelector('#result-screen .btn');
-            const originalText = btn.textContent;
-            btn.textContent = "Отправка...";
-            btn.disabled = true;
+    const btn = document.querySelector('#result-screen .btn-send');
+    const originalText = btn.textContent;
+    btn.textContent = "Отправка...";
+    btn.disabled = true;
 
-            // Формируем URL с параметрами для GET запроса (обход CORS)
-            const params = new URLSearchParams({
-                student: this.resultData.name,
-                correct: this.resultData.correct,
-                total: this.resultData.total,
-                percent: this.resultData.percent,
-                time: this.resultData.time,
-                topic: this.resultData.topic
-            });
-            
-            const url = `https://script.google.com/macros/s/AKfycbzUuoH55lTk5z7_cQOuyUlZKlXC0dyERkh7RmzBzbQqVKg-Z5ttAkOLt1I1jRnDyTK9/exec?${params.toString()}`;
-            
-            console.log('🔗 URL запроса:', url);
-
-            fetch(url, {
-                method: "GET",
-                mode: "no-cors"
-            })
-            .then(() => {
-                // При no-cors мы не можем проверить статус, но запрос отправляется
-                console.log('✅ Запрос отправлен успешно');
-                alert('✅ Результат отправлен!\n\nПроверьте Telegram чат для подтверждения.');
-            })
-            .catch(error => {
-                console.error('❌ Ошибка отправки:', error);
-                alert('❌ Не удалось отправить результат.\n\nОшибка: ' + error.message + '\n\nПроверьте консоль (F12) для деталей.');
-            })
-            .finally(() => {
-                btn.textContent = originalText;
-                btn.disabled = false;
-            });
-        }
+    // --- ВАЖНО: Вставь сюда свой URL скрипта ---
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxo4SmGwUZ200iSF8sHQc9HIAFDDIiJItefFNr2m1hoN_dir7o_VKiSQifUtWQfiJCl/exec"; 
+    
+    // Формируем параметры
+    const params = new URLSearchParams({
+        student: this.resultData.name,
+        correct: this.resultData.correct,
+        total: this.resultData.total,
+        percent: this.resultData.percent,
+        time: this.resultData.time,
+        topic: this.resultData.topic
+    });
+    
+    const finalUrl = `${SCRIPT_URL}?${params.toString()}`;
+    
+    // Используем fetch с mode: 'no-cors'
+    // Пояснение: Браузеры блокируют чтение ответа от Google Script из-за CORS политик,
+    // если мы просто открываем HTML файл. 'no-cors' позволяет отправить данные,
+    // но мы не узнаем статус ответа (200 или 404). Мы полагаем, что все прошло успешно.
+    fetch(finalUrl, {
+        method: "GET",
+        mode: "no-cors" 
+    })
+    .then(() => {
+        console.log('✅ Запрос отправлен (no-cors)');
+        alert(`✅ Результат отправлен!\nУченик: ${this.resultData.name}\nТест: ${this.resultData.topic}`);
+        btn.textContent = "Отправлено";
+    })
+    .catch(error => {
+        console.error('❌ Ошибка отправки:', error);
+        alert('❌ Ошибка при отправке. Проверьте интернет соединение.');
+        btn.textContent = originalText;
+        btn.disabled = false;
+    });
+}
     }
 
     // Инициализация
