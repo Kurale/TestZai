@@ -1,0 +1,97 @@
+[
+{
+"id": 1,
+"type": "multiple_choice",
+"question": "Какое число стоит непосредственно перед числом 55 555?",
+"options": ["55 554", "55 556", "55 545", "54 555"],
+"correct_answer": "55 554",
+"has_image": false,
+"image_path": null,
+"explanation": "Чтобы найти предыдущее число, нужно вычесть 1 из данного числа."
+},
+{
+"id": 2,
+"type": "fill_blank",
+"question": "Из какого числа вычли 1 и получили 40 000? Вставь число: ___ − 1 = 40 000",
+"correct_answer": "40001",
+"has_image": true,
+"image_path": "images/number_line_40000.png",
+"explanation": "Если после вычитания 1 осталось 40 000, значит исходное число было на 1 больше."
+},
+{
+"id": 3,
+"type": "multiple_choice",
+"question": "Сколько килограммов составляет одна пятая часть от 450 кг?",
+"options": ["90 кг", "50 кг", "100 кг", "45 кг"],
+"correct_answer": "90 кг",
+"has_image": false,
+"image_path": null,
+"explanation": "Чтобы найти пятую часть, нужно разделить 450 на 5."
+},
+{
+"id": 4,
+"type": "fill_blank",
+"question": "В одних сутках 24 часа. Сколько часов в пяти сутках? Ответ: ___ часов",
+"correct_answer": "120",
+"has_image": true,
+"image_path": "images/clock_days.png",
+"explanation": "Нужно умножить количество часов в сутках на число суток: 24 × 5."
+},
+{
+"id": 5,
+"type": "multiple_choice",
+"question": "К какому веку относится 721 год?",
+"options": ["VII век", "VIII век", "IX век", "X век"],
+"correct_answer": "VIII век",
+"has_image": false,
+"image_path": null,
+"explanation": "721 год — это после 700 года, значит, это VIII век."
+},
+{
+"id": 6,
+"type": "fill_blank",
+"question": "Периметр квадрата 20 см. Сторона квадрата равна ___ см, а площадь — ___ см²",
+"correct_answer": "5, 25",
+"has_image": true,
+"image_path": "images/square_20cm_perimeter.png",
+"explanation": "У квадрата 4 равные стороны: 20 : 4 = 5 см. Площадь: 5 × 5 = 25 см²."
+},
+{
+"id": 7,
+"type": "multiple_choice",
+"question": "Одно число — 5000, и оно на 2000 меньше другого. Чему равна сумма этих чисел?",
+"options": ["12 000", "7000", "10 000", "8000"],
+"correct_answer": "12 000",
+"has_image": false,
+"image_path": null,
+"explanation": "Второе число: 5000 + 2000 = 7000. Сумма: 5000 + 7000 = 12 000."
+},
+{
+"id": 8,
+"type": "fill_blank",
+"question": "Неизвестное число увеличили в 6 раз и получили 42. Это число: ___",
+"correct_answer": "7",
+"has_image": false,
+"image_path": null,
+"explanation": "Чтобы найти исходное число, нужно 42 разделить на 6."
+},
+{
+"id": 9,
+"type": "multiple_choice",
+"question": "Неизвестное число уменьшили в 4 раза и получили 120. Какое это было число?",
+"options": ["30", "480", "124", "400"],
+"correct_answer": "480",
+"has_image": true,
+"image_path": "images/division_visual.png",
+"explanation": "Если число разделили на 4 и получили 120, значит, исходное число: 120 × 4 = 480."
+},
+{
+"id": 10,
+"type": "fill_blank",
+"question": "Высота столба над землёй — 8 м, это 1/4 часть подземной части. Подземная часть равна ___ м",
+"correct_answer": "32",
+"has_image": false,
+"image_path": null,
+"explanation": "Если 8 м — это четверть подземной части, значит, вся подземная часть: 8 × 4 = 32 м."
+}
+]
